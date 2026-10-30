@@ -1,5 +1,6 @@
 import re
 from rapidfuzz import fuzz
+from rapidfuzz.distance import JaroWinkler
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.models import Institution
@@ -31,7 +32,7 @@ def resolve_institution(db: Session, query_name: str, query_address: str = "", q
     """
     Resolves an institution name/address to an AICTE Permanent ID using:
     1. Normalization & pg_trgm / exact lookup
-    2. RapidFuzz Jaro-Winkler (token_set_ratio or WRatio)
+    2. RapidFuzz Jaro-Winkler / WRatio
     3. Pincode / region boost
     4. Manual-confirm queue if below threshold
     """
@@ -49,8 +50,8 @@ def resolve_institution(db: Session, query_name: str, query_address: str = "", q
         db_norm_name = normalize_text(inst.name)
         db_norm_addr = normalize_text(inst.address)
 
-        # Calculate fuzzy similarity using RapidFuzz
-        name_score = fuzz.jaro_winkler_similarity(norm_name, db_norm_name) * 100
+        # Calculate fuzzy similarity using RapidFuzz JaroWinkler or WRatio
+        name_score = JaroWinkler.similarity(norm_name, db_norm_name) * 100
         addr_score = fuzz.token_sort_ratio(norm_addr, db_norm_addr)
 
         # Combined weighted score
